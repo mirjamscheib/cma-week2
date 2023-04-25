@@ -3,23 +3,58 @@ title: "cma-week2-rexercise"
 format: html
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
+# Task 1: Import your data
 ```{r}
-1 + 1
+## Load the necessary libraries ################################################
+
+library(readr) # to import tabular data (e.g. csv)
+library(dplyr) # to manipulate (tabular) data
+library(ggplot2) # to visualize data
+library(sf) # to handle spatial vector data
+library(terra) # To handle raster data
+library(lubridate) # To handle dates and times
+
+## Import the downloaded csv ##################################################
+
+wildschwein_BE <- read_delim("wildschwein_BE_2056.csv", ",") # adjust path
+
+wildschwein_BE <- st_as_sf(wildschwein_BE, coords = c("E", "N"), crs = 2056, remove = FALSE) # setting remove = FALSE preserves the original (E/N) columns, which come in handy later on
 ```
 
-You can add options to executable code like this 
-
+# Task 2: Getting an overview 
 ```{r}
-#| echo: false
-2 * 2
+# Calculate the time difference between subsequent rows as described in the demo
+wildschwein <- mutate(wildschwein_BE, timelag = as.integer(difftime(lead(DatetimeUTC), DatetimeUTC, units = "secs")))
+
+# How many individuals were tracked?
+wildschwein$TierName <- as.factor(wildschwein$TierName)
+wildschwein$TierName
+# Rosa, Ruth & Sabi = 3 individuals 
+
+# For how long were the individual tracked? Are there gaps?
+
+
+# Were all individuals tracked concurrently or sequentially?
+
+
+# What is the temporal sampling interval between the locations?
+
+# Plot 1
+ggplot(wildschwein, aes(DatetimeUTC, TierID)) +
+  geom_line()
+
+# Plot 2
+ggplot(wildschwein, aes(timelag)) +
+  geom_histogram()
+
+# Plot 3
+ggplot(wildschwein, aes(DatetimeUTC, timelag, col = TierID)) +
+  geom_line()
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+# Task 3: Deriving movement parameters I: Speed 
+```{r}
+
+```
+
+
