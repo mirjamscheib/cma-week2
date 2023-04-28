@@ -3,7 +3,7 @@ title: "cma-week2-rexercise"
 format: html
 ---
 
-# Task 1: Import your data
+# ok Task 1: Import your data
 ```{r}
 ## Load the necessary libraries ################################################
 
@@ -18,43 +18,72 @@ library(lubridate) # To handle dates and times
 
 wildschwein_BE <- read_delim("wildschwein_BE_2056.csv", ",") # adjust path
 
+# to convert it to a spatial object
 wildschwein_BE <- st_as_sf(wildschwein_BE, coords = c("E", "N"), crs = 2056, remove = FALSE) # setting remove = FALSE preserves the original (E/N) columns, which come in handy later on
 ```
 
 # Task 2: Getting an overview 
 ```{r}
 # Calculate the time difference between subsequent rows as described in the demo
-wildschwein <- mutate(wildschwein_BE, timelag = as.integer(difftime(lead(DatetimeUTC), DatetimeUTC, units = "secs")))
+wildschwein_BE <- wildschwein_BE |> # Takes wildschwein_BE 
+    group_by(TierID) |> # ...group it by TierID
+    mutate(timelag_sec = as.integer(difftime(lead(DatetimeUTC), DatetimeUTC, units = "secs")))
 
 # How many individuals were tracked?
-wildschwein$TierName <- as.factor(wildschwein$TierName)
-wildschwein$TierName
-# Rosa, Ruth & Sabi = 3 individuals 
+ggplot(wildschwein_BE, aes(DatetimeUTC, TierID)) +
+  geom_point()
+# 3 individuals (002A, 016A, 018A)
+# this plot would also be possible using TierName from the dataset
+# you can see that for example 002A was tracked the longest of all three individuals 
 
-# For how long were the individual tracked? Are there gaps?
+# or you can use another way to check for individuals in your data 
+wildschwein_BE$TierID |> unique() # through TierID
+wildschwein_BE$TierName |> unique() # or through TierName 
+
+# For how long were the individuals tracked? Are there gaps?
+ggplot(wildschwein_BE, aes(timelag_sec/60)) +
+  geom_histogram(binwidth = 1) +
+  lims(x = c(0, 5000/60)) +
+  scale_y_log10()
+# the individuales were tracked between around 5 to 75 min. Most werde tracked around 15 min with outliers above and under these 15 min. 
 
 
 # Were all individuals tracked concurrently or sequentially?
-
+ggplot(wildschwein_BE, aes(DatetimeUTC, timelag_sec, col = TierID)) +
+  geom_point()
+# the individuals were tracked concurrently, as the sampling points in this plot overlap. 
 
 # What is the temporal sampling interval between the locations?
-
-# Plot 1
-ggplot(wildschwein, aes(DatetimeUTC, TierID)) +
-  geom_line()
-
-# Plot 2
-ggplot(wildschwein, aes(timelag)) +
-  geom_histogram()
-
-# Plot 3
-ggplot(wildschwein, aes(DatetimeUTC, timelag, col = TierID)) +
-  geom_line()
+# too much data, filter it 
+wildschwein_BE |>
+  filter(DatetimeUTC < "2014-08-24") |>
+  ggplot(aes(DatetimeUTC, timelag_sec, col = TierID)) +
+  geom_point()
 ```
 
 # Task 3: Deriving movement parameters I: Speed 
 ```{r}
+E1 <- 2570409
+E2 <- 2570402 
+N1 <- 1204752
+N2 <- 1204863
 
+# calculate euclidean distance 
+# distance between the 1. and 2. location it 111metres 
+sqrt((E1 - E2)^2 + (N1 - N2)^2)
+
+# to calculate distance between locations (spalte E - lead(E), spalte N - lead(N))
+wildschwein_BE <- wildschwein_BE |>
+  group_by(TierID) |>
+  mutate(steplength_m = sqrt((E - lead(E))^2 + (N - lead(N))^2))
+
+# Now calculate the animals’ speed between consecutive locations based on steplength and the timelag (from the last task). What speed unit do you get? --> m/s
+wildschwein_BE <- wildschwein_BE |>
+  mutate(speed_ms = steplength_m/timelag_sec)
+
+hist(log10(wildschwein_BE$speed_ms), 100)
+
+widschwein
 ```
 
 
